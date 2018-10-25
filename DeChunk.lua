@@ -139,7 +139,6 @@ end
 -- Params: num<lua_Number>
 -- Desc: Performs a logical negation, replicates this:
 --     ~num
--- 
 ---------------------------------------------------------------
 local function negateBits(num) 
   local res = 0
