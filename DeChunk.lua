@@ -174,11 +174,16 @@ end
 
 ---------------------------------------------------------------
 -- readSPFloat
--- Params: num<lua_Number>
+-- Params: data<String>
 -- Desc: Unpack a 4 byte IEEE754-Single-Precision floating 
 -- point value from a string
 ---------------------------------------------------------------
-local function readSPFloat(number)
+local function readSPFloat(data)
+    local number = 0.0
+    for i = 4, 1, -1 do
+      number = shiftLeft(number, 8) + string.byte(data, i)
+    end
+
     local isNormal = 1
     local signed = shiftRight(number, 31)
     local exponent = shiftRight(number, 23)
@@ -207,16 +212,26 @@ end
 
 ---------------------------------------------------------------
 -- readSPFloat
--- Params: num<lua_Number>
+-- Params: data<String>
 -- Desc: Unpack a 8 byte IEEE754-Double-Precision floating
 -- point value from a string
 ---------------------------------------------------------------
-local function readDPFloat(number)
+local function readDPFloat(data)
+    local upper, lower = 0.0, 0.0
+
+    for i = 8, 5, -1 do
+      upper = shiftLeft(upper, 8) + string.byte(data, i)
+    end
+
+    for i = 4, 1, -1 do
+      lower = shiftLeft(lower, 8) + string.byte(data, i)
+    end
+
     local isNormal = 1
-    local signed = shiftRight(number, 63)
-    local exponent = shiftRight(number, 52)
+    local signed = shiftRight(upper, 31)
+    local exponent = shiftRight(upper, 20)
           exponent = clearBits(exponent, 11, 12)
-    local mantissa = clearBits(number, 52, 63)
+    local mantissa = shiftLeft(clearBits(upper, 20, 31), 32) + lower
 
     local sign = ((-1) ^ signed)
     if (exponent == 0) then
@@ -233,7 +248,7 @@ local function readDPFloat(number)
             return sign * (0 / 0) -- +-Q/Nan
         end
     end
-
+    
     -- sign * 2**e-1023 * isNormal.mantissa
     return math.ldexp(sign, exponent - 1023) * (isNormal + (mantissa / (2 ^ 52)))
 end
@@ -245,7 +260,7 @@ end
 
 ---------------------------------------------------------------
 -- loadError
--- Params: msg<string>
+-- Params: msg<String>
 -- Desc: Errors with the provided message
 ---------------------------------------------------------------
 local function loadError(msg)
@@ -302,7 +317,7 @@ local function loadInt(chunkData)
   local int = 0
 
   for i = sz, 1, -1 do
-  	int = shiftLeft(int, 8) + string.byte(intBytes, i)
+    int = shiftLeft(int, 8) + string.byte(intBytes, i)
   end
 
   -- If signed, negate and add one --
@@ -345,18 +360,14 @@ end
 local function loadNumber(chunkData)
   local sz = chunkData.header.numberSz
   local numberBytes = loadBlock(chunkData, sz)
-  local number = 0.0
-
-  for i = sz, 1, -1 do
-    number = shiftLeft(number, 8) + string.byte(numberBytes, i)
-  end
+  local number
 
   if (sz == 4) then 
-  	number = readSPFloat(number)
+    number = readSPFloat(numberBytes)
   elseif (sz == 8) then
-  	number = readDPFloat(number)
+    number = readDPFloat(numberBytes)
   else
-  	loadError("number size mismatch")
+    loadError("number size mismatch")
   end
 
   return number
@@ -381,7 +392,7 @@ end
 
 ---------------------------------------------------------------
 -- loadFunction
--- Params: chunkData, chunkName<string>
+-- Params: chunkData, chunkName<String>
 -- Desc: Attempts to load a string from the given chunk
 ---------------------------------------------------------------
 local function loadFunction(chunkData, chunkName)
@@ -442,7 +453,7 @@ local function loadFunction(chunkData, chunkName)
       local value = 0xBAD
 
       if (tt == LUA_TNIL) then
-        value = nil
+        value = LUA_TNIL
       elseif (tt == LUA_TBOOLEAN) then
         value = loadChar(chunkData) ~= 0 -- 0 = false --
       elseif (tt == LUA_TNUMBER) then
@@ -554,7 +565,7 @@ local function loadHeader(chunkData, forceDefault)
   }
 
   if (forceDefault) then
-  	header = LUA_DEFAULTHEADER
+    header = LUA_DEFAULTHEADER
   end 
 
   return header
