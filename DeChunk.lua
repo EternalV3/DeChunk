@@ -442,7 +442,7 @@ local function loadFunction(chunkData, chunkName)
       local value = 0xBAD
 
       if (tt == LUA_TNIL) then
-        value = LUA_TNIL
+        value = nil
       elseif (tt == LUA_TBOOLEAN) then
         value = loadChar(chunkData) ~= 0 -- 0 = false --
       elseif (tt == LUA_TNUMBER) then
