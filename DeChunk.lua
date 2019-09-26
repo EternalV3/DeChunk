@@ -450,10 +450,10 @@ local function loadFunction(chunkData, chunkName)
 
     for i = 1, sizek do
       local tt = loadChar(chunkData)
-      local value = 0xBAD
+      local value
 
       if (tt == LUA_TNIL) then
-        value = LUA_TNIL
+        value = nil
       elseif (tt == LUA_TBOOLEAN) then
         value = loadChar(chunkData) ~= 0 -- 0 = false --
       elseif (tt == LUA_TNUMBER) then
